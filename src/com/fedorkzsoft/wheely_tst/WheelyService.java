@@ -1,48 +1,36 @@
 package com.fedorkzsoft.wheely_tst;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import com.fedorkzsoft.wheely_tst.base.WheelyGps;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 
 import android.app.Activity;
-import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
-import android.os.Vibrator;
 import android.util.Log;
-import android.util.Pair;
 
 import com.fedorkzsoft.wheely_tst.R;
 
-public class DiverseService extends Service {
+import de.tavendo.autobahn.WebSocket.ConnectionHandler;
+
+public class WheelyService extends Service {
 
 	public static final int NOTIFICATION_ONLINE = 0;
 	public static final int NOTIFICATION_OFFLINE = 1;
@@ -64,8 +52,6 @@ public class DiverseService extends Service {
 
 	final Messenger mMessenger = new Messenger(new IncomingHandler()); // Target we publish for clients to send messages to IncomingHandler.
     ArrayList<Messenger> mClients = new ArrayList<Messenger>(); // Keeps track of all current registered clients.
-	private String mLogin;
-	private String mPass;
 	
 	private LatLngBounds mBounds;
 	private int mLatestNotification = -1;
@@ -235,6 +221,32 @@ public class DiverseService extends Service {
     }
 	
 	private void setupWebSockets(String login, String pass) {
+		final WheelyWebSocket mWheelyWebSocket = new WheelyWebSocket(login, pass);
+		mWheelyWebSocket.connectToWheely(new ConnectionHandler() {
+			
+			@Override
+			public void onTextMessage(String payload) {
+			}
+			
+			@Override
+			public void onRawTextMessage(byte[] payload) {
+			}
+			
+			@Override
+			public void onOpen() {
+			}
+			
+			@Override
+			public void onClose(int code, String reason) {
+				mWheelyWebSocket.reconnectToWheely();
+			}
+			
+			@Override
+			public void onBinaryMessage(byte[] payload) {
+				// TODO Auto-generated method stub
+				
+			}
+		});
 	}
 
 	@SuppressWarnings("deprecation")
