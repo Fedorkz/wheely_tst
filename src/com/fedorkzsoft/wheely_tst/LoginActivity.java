@@ -45,6 +45,7 @@ public class LoginActivity extends ActionBarActivity {
 			@Override
 			public void onClick(View v) {
 				doLogin();
+				openMapVindow();
 			}
 		});
         
@@ -81,8 +82,8 @@ public class LoginActivity extends ActionBarActivity {
 
 
     protected void openMapVindow() {
-		// TODO Auto-generated method stub
-		
+		 Intent intent = new Intent(this, WheelyMapActivity.class);
+		 startActivity( intent );
 	}
 
 
