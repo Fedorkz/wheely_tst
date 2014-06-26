@@ -16,8 +16,6 @@ public class WheelyJson {
 	private static final String KEY_LON = "lon";
 	private static final String KEY_ID = "id";
 	
-	
-
 	public static String SerializeLocation(LatLng loc){
 		JSONObject jso = new JSONObject();
 		try {
