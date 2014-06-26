@@ -32,6 +32,13 @@ import de.tavendo.autobahn.WebSocket.ConnectionHandler;
 
 public class WheelyService extends Service {
 
+	public static final String BROADCAST_ACTION_LOGIN = "brkst.login";
+	public static final String AUTH_RESULT = "brkst.authresult";
+	public static final int NOT_AUTH = 403;
+	
+	public static final String BROADCAST_ACTION_POINTS = "brkst.points";
+	public static final String POINTS_JSON = "brkst.pointsjson";
+	
 	public static final int NOTIFICATION_ONLINE = 0;
 	public static final int NOTIFICATION_OFFLINE = 1;
 	public static final int NOTIFICATION_CONNECTION_STARTED = 2;
@@ -57,6 +64,8 @@ public class WheelyService extends Service {
 	private int mLatestNotification = -1;
 	
 	WheelyPreferences mPrefs;
+	
+	WheelyWebSocket mWheelyWebSocket;
 
 	@Override
 	public IBinder onBind(Intent intent) {
@@ -106,7 +115,7 @@ public class WheelyService extends Service {
 			public void onLocationChanged(Location l) {
 				Log.i("GPS","onLocationChanged");
 				mCurLoc = new LatLng(l.getLatitude(), l.getLongitude());
-				sendLocationToGame(mCurLoc);
+				sendLocationToWheely(mCurLoc);
 //				GameState.setMyLocation(mCurLoc);
 			}
 		});
@@ -142,25 +151,15 @@ public class WheelyService extends Service {
     
     public void sendKnownInfo() {
     	if (mCurLoc != null)
-    		sendLocationToGame(mCurLoc);
+    		sendLocationToWheely(mCurLoc);
 //    	if (AppState.getPlayers().size() > 1 )
 //    		sendUpdateUI();
     }
 
-	private void sendLocationToGame(LatLng loc) {
-        for (int i=mClients.size()-1; i>=0; i--) {
-            try {
-                Bundle b = new Bundle();
-                b.putParcelable(MSG_LOCATION, loc);
-                Message msg = Message.obtain(null, MSG_LOCATION_CHANGE);
-                msg.setData(b);
-                mClients.get(i).send(msg);
-
-            } catch (RemoteException e) {
-                // The client is dead. Remove it from the list; we are going through the list from back to front so this is safe to do inside the loop.
-                mClients.remove(i);
-            }
-        }
+	private void sendLocationToWheely(LatLng loc) {
+		mWheelyWebSocket.sendTextMessage(
+				WheelyJson.SerializeLocation(loc)
+			);
     }
 //	private void sendConnectionLost() {
 //		sendEmptyMessage(MSG_CONNECION_LOST);
@@ -221,11 +220,12 @@ public class WheelyService extends Service {
     }
 	
 	private void setupWebSockets(String login, String pass) {
-		final WheelyWebSocket mWheelyWebSocket = new WheelyWebSocket(login, pass);
+		mWheelyWebSocket = new WheelyWebSocket(login, pass);
 		mWheelyWebSocket.connectToWheely(new ConnectionHandler() {
 			
 			@Override
 			public void onTextMessage(String payload) {
+				sendPoints(payload);
 			}
 			
 			@Override
@@ -234,11 +234,16 @@ public class WheelyService extends Service {
 			
 			@Override
 			public void onOpen() {
+				sendAuthResult(0);
 			}
 			
 			@Override
 			public void onClose(int code, String reason) {
-				mWheelyWebSocket.reconnectToWheely();
+				if (code == NOT_AUTH){
+					sendAuthResult(NOT_AUTH);
+				}else{
+					mWheelyWebSocket.reconnectToWheely();
+				}
 			}
 			
 			@Override
@@ -248,6 +253,18 @@ public class WheelyService extends Service {
 			}
 		});
 	}
+
+	protected void sendAuthResult(int res) {
+		Intent in = new Intent(BROADCAST_ACTION_LOGIN);
+		in.putExtra(AUTH_RESULT, res);
+		sendBroadcast(in);
+	}
+	
+	protected void sendPoints(String res) {
+		Intent in = new Intent(BROADCAST_ACTION_POINTS);
+		in.putExtra(POINTS_JSON, res);
+		sendBroadcast(in);
+	}	
 
 	@SuppressWarnings("deprecation")
 	private void showNotification(int type) {
