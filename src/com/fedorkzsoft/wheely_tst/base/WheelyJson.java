@@ -1,6 +1,7 @@
-package com.fedorkzsoft.wheely_tst;
+package com.fedorkzsoft.wheely_tst.base;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -30,34 +31,43 @@ public class WheelyJson {
 		return jso.toString();
 	}
 	
-	public static Pair<Integer, LatLng> parseLocation(JSONObject jso){
+	public static Car parseCar(JSONObject jso){
 		try {
 			LatLng loc = new LatLng(
 					jso.getDouble(KEY_LAT), 
 					jso.getDouble(KEY_LON)
 				);
 			int id = jso.getInt(KEY_ID);
-
-			return new Pair<Integer, LatLng>(id, loc);
 			
+			return new Car(id, loc);
 		} catch (JSONException e) {
 			e.printStackTrace();
 			return null;
 		}
 	}
 	
-	public static ArrayList<Pair<Integer, LatLng>> parseLocationList(JSONArray arr){
-		int n = arr.length();
-		ArrayList<Pair<Integer, LatLng>> cars = new ArrayList<Pair<Integer, LatLng>>(n);
+	public static ArrayList<Car> parseCarList(String str){
 		
-		for (int i=0; i<n; i++){
+		JSONArray arr;
+
+		try {
+			arr = new JSONArray(str);
+		} catch (JSONException e1) {
+			e1.printStackTrace();// SMTH is broken, no need to continue
+			return null;
+		}
+		
+		int n = arr.length();
+		ArrayList<Car> cars = new ArrayList<Car>(n);
+
+		for (int i=0; i<n; i++){ 
 			try {
-				Pair<Integer, LatLng> car = parseLocation(arr.getJSONObject(i));
+				Car car = parseCar(arr.getJSONObject(i));
 				if (car != null){
 					cars.add(car);
 				}
 			} catch (JSONException e) {
-				e.printStackTrace();
+				e.printStackTrace();// one car is broken, try to read others
 			}
 		}
 

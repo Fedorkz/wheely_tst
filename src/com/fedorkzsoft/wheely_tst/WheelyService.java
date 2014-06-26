@@ -3,6 +3,7 @@ package com.fedorkzsoft.wheely_tst;
 import java.util.ArrayList;
 
 import com.fedorkzsoft.wheely_tst.base.WheelyGps;
+import com.fedorkzsoft.wheely_tst.base.WheelyJson;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 
