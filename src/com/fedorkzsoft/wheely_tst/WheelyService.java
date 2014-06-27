@@ -337,7 +337,7 @@ public class WheelyService extends Service {
 //        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 //        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT);
         
-        PendingIntent intent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+        PendingIntent intent = PendingIntent.getActivity(this, 1, notificationIntent, 0);
         notification.setLatestEventInfo(this, title, message, intent);
         
 //        notification.flags = Notification.FLAG_ONGOING_EVENT;

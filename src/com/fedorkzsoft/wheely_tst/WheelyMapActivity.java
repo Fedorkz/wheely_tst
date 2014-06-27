@@ -47,6 +47,12 @@ public class WheelyMapActivity extends FragmentActivity {
 		setupMap();
 		initBroadcast();
 	}
+	
+	@Override
+	protected void onDestroy() {
+		unregisterReceiver(mBroadcastReciever);
+		super.onDestroy();
+	}
 
 	protected void onGotCarsList(final String str) {
 		new AsyncTask<String, String, List<Car>>() {
