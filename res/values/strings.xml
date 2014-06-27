@@ -11,7 +11,10 @@
 	<string name="status_online">Wheely tst: online</string>
 	<string name="status_offline">Wheely tst: OFFLINE</string>
 	<string name="status_connecting">Wheely tst: Connecting</string>
-   
+
+	<string name="ok">OK</string>
+		
+	<string name="err">Error.</string>
 	<string name="err_invalid_login">Login and password shouldn\'t be empty.</string>
 	<string name="err_not_auth">Wrong login or password. Please check.</string>
 	<string name="err_network">Wrong login or password. Please check.</string>

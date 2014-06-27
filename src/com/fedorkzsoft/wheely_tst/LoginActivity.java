@@ -3,6 +3,7 @@ package com.fedorkzsoft.wheely_tst;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.ActionBar;
 import android.support.v4.app.Fragment;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -38,6 +39,7 @@ public class LoginActivity extends ActionBarActivity {
         String oldLogin = mPrefs.getLogin();
         if (oldLogin != null){
         	mUsernameEdt.setText(oldLogin);
+        	mPasswordEdt.setText(mPrefs.getPass());// <-- Maybe remove this
         }
         
         findViewById(R.id.login).setOnClickListener(new OnClickListener() {
@@ -45,11 +47,12 @@ public class LoginActivity extends ActionBarActivity {
 			@Override
 			public void onClick(View v) {
 				doLogin();
-				openMapVindow();
+//				openMapVindow();
 			}
 		});
         
         initBroadcast();
+        queryCheckWeelyService();
     }
     
     @Override
@@ -66,12 +69,15 @@ public class LoginActivity extends ActionBarActivity {
 			public void onReceive(Context context, Intent in) {
 				int res = in.getIntExtra(WheelyService.AUTH_RESULT, -1);
 				
-				if (res == 0){// auth ok
+				if (res == 0 || res == WheelyService.ALREADY_ALIVE){// auth ok
+					finish();
 					openMapVindow();
 				} else if (res == WheelyService.NOT_AUTH){
-					showAlert(getString(R.string.err_not_auth));
+					showAlert(R.string.err_not_auth);
+					stopWeelyService();
 				} else {
-					showAlert(getString(R.string.err_network));
+					showAlert(R.string.err_network);
+					stopWeelyService();
 				}
 			}
 		};
@@ -94,20 +100,40 @@ public class LoginActivity extends ActionBarActivity {
     		mPrefs.setLogin(username);
     		mPrefs.setPass(password);
     		
+//    		stopWeelyService();
         	startWeelyService();
     	} else {
-    		showAlert(getString(R.string.err_invalid_login));
+    		showAlert(R.string.err_invalid_login);
     	}
 	}
 
 
 	private void startWeelyService() {
 		Intent intent = new Intent(this, WheelyService.class);
+		intent.setAction(WheelyService.ACTION_LOGIN);
 		startService(intent);
+	}	
+	
+
+	private void queryCheckWeelyService() {
+		Intent intent = new Intent(this, WheelyService.class);
+		intent.setAction(WheelyService.ACTION_CHECK_ALIVE);
+//		intent.putExtra(name, value)
+		startService(intent);
+	}		
+	
+	private void stopWeelyService() {
+		Intent intent = new Intent(this, WheelyService.class);
+		stopService(intent);
 	}
 
 
-	private void showAlert(String string) {
+	private void showAlert(int msg) {
+		new AlertDialog.Builder(this)
+		 	.setTitle(R.string.err)
+			.setMessage(msg)
+			.setPositiveButton(R.string.ok, null)
+			.show();
 	}
 
 	private boolean verify(String username, String password) {
@@ -117,7 +143,6 @@ public class LoginActivity extends ActionBarActivity {
 
 	@Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
         return true;

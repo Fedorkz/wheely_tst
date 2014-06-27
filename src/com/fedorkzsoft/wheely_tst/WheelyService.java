@@ -33,13 +33,19 @@ import de.tavendo.autobahn.WebSocket.ConnectionHandler;
 
 public class WheelyService extends Service {
 
+	private static final int NOT_AUTH_SVR = 6;
 	public static final String BROADCAST_ACTION_LOGIN = "brkst.login";
 	public static final String AUTH_RESULT = "brkst.authresult";
 	public static final int NOT_AUTH = 403;
+	public static final int ALREADY_ALIVE = -2;
 	
 	public static final String BROADCAST_ACTION_POINTS = "brkst.points";
 	public static final String POINTS_JSON = "brkst.pointsjson";
 	
+	public static final String ACTION_CHECK_ALIVE = "action.checkalive";
+	public static final String ACTION_LOGIN = "action.login";
+	
+
 	public static final int NOTIFICATION_ONLINE = 0;
 	public static final int NOTIFICATION_OFFLINE = 1;
 	public static final int NOTIFICATION_CONNECTION_STARTED = 2;
@@ -53,7 +59,7 @@ public class WheelyService extends Service {
 	private static final int MSG_LOCATION_CHANGE = 5;
     
     private NotificationManager nm;
-    private static boolean isRunning = false;
+    private static boolean isConnected = false;
     
 	private WheelyGps mGpsInfo;
 	protected LatLng mCurLoc;
@@ -80,12 +86,12 @@ public class WheelyService extends Service {
         
         nm.cancel(0); // Cancel the persistent notification.
         Log.i("svr", "SERVICE    STOP.");
-        isRunning = false;
+        isConnected = false;
     }
 	   
     public static boolean isRunning()
     {
-        return isRunning;
+        return isConnected;
     }	   
     
 	private void setupGPS() {
@@ -153,8 +159,6 @@ public class WheelyService extends Service {
     public void sendKnownInfo() {
     	if (mCurLoc != null)
     		sendLocationToWheely(mCurLoc);
-//    	if (AppState.getPlayers().size() > 1 )
-//    		sendUpdateUI();
     }
 
 	private void sendLocationToWheely(LatLng loc) {
@@ -162,19 +166,11 @@ public class WheelyService extends Service {
 				WheelyJson.SerializeLocation(loc)
 			);
     }
-//	private void sendConnectionLost() {
-//		sendEmptyMessage(MSG_CONNECION_LOST);
-//    }
-//	
+
 	private void sendGpsEnabled() {
-//		sendEmptyMessage(MSG_GPS_ENABLED);
 	}
 	
 	private void sendGpsDisabled() {
-//        Bundle b = new Bundle();
-//        b.putBoolean(MSG_GPS_NETWORK_ENABLED, networkEnabled);
-//		
-//		sendBundleMessage(MSG_GPS_DISABLED, b);
 	}
 	
 
@@ -207,17 +203,28 @@ public class WheelyService extends Service {
     }
     
 	@Override
+	public int onStartCommand(Intent intent, int flags, int startId) {
+		
+		String act = intent.getAction();
+		if (ACTION_CHECK_ALIVE.equalsIgnoreCase(act) && isConnected){
+			sendIsAlive();
+		} else if (ACTION_LOGIN.equalsIgnoreCase(act)){
+				if (!isConnected){
+		        showNotification(NOTIFICATION_CONNECTION_STARTED);
+		        setupWebSockets(mPrefs.getLogin(), mPrefs.getPass());
+			} else {
+				sendAuthResult(0);
+			}
+		}
+		return super.onStartCommand(intent, flags, startId);
+	}
+	
+	@Override
     public void onCreate() {
         super.onCreate();
 
         mPrefs = new WheelyPreferences(this);
-        
-        showNotification(NOTIFICATION_CONNECTION_STARTED);
         setupGPS();
-        
-        setupWebSockets(mPrefs.getLogin(), mPrefs.getPass());
-
-        isRunning = true;
     }
 	
 	private void setupWebSockets(String login, String pass) {
@@ -235,12 +242,19 @@ public class WheelyService extends Service {
 			
 			@Override
 			public void onOpen() {
+				isConnected = true;				
+				showNotification(NOTIFICATION_ONLINE);
 				sendAuthResult(0);
+				if (mCurLoc != null)
+					sendLocationToWheely(mCurLoc);
 			}
 			
 			@Override
 			public void onClose(int code, String reason) {
-				if (code == NOT_AUTH){
+				isConnected = false;				
+				
+				showNotification(NOTIFICATION_OFFLINE);
+				if (code == NOT_AUTH_SVR){
 					sendAuthResult(NOT_AUTH);
 				}else{
 					mWheelyWebSocket.reconnectToWheely();
@@ -250,9 +264,14 @@ public class WheelyService extends Service {
 			@Override
 			public void onBinaryMessage(byte[] payload) {
 				// TODO Auto-generated method stub
-				
 			}
 		});
+	}
+
+	protected void sendIsAlive() {
+		Intent in = new Intent(BROADCAST_ACTION_LOGIN);
+		in.putExtra(AUTH_RESULT, ALREADY_ALIVE);
+		sendBroadcast(in);
 	}
 
 	protected void sendAuthResult(int res) {
@@ -300,21 +319,28 @@ public class WheelyService extends Service {
         	break;
         }
         
+        
+//        Notification notification = new Notification.Builder(this)
+//	        .setContentTitle(message)
+//	        .setContentText(message)
+//	        .build();
+        
+// to support A2.2        
 		Notification notification = new  Notification(
         		icon, 
         		message, 
         		System.currentTimeMillis());
         
         String title = getString(R.string.app_name);
-        Intent notificationIntent = new Intent(this, LoginActivity.class);
+        Intent notificationIntent = new Intent(this, WheelyMapActivity.class);
         
 //        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT);
+//        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT);
         
         PendingIntent intent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
         notification.setLatestEventInfo(this, title, message, intent);
         
-        notification.flags = Notification.FLAG_ONGOING_EVENT;
+//        notification.flags = Notification.FLAG_ONGOING_EVENT;
         notification.defaults |= Notification.DEFAULT_SOUND;
         
 //        nm.notify(NOTIFICATION_ID, notification);
