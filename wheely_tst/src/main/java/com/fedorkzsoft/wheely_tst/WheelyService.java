@@ -5,10 +5,11 @@ import java.util.ArrayList;
 import com.fedorkzsoft.wheely_tst.base.WheelyGps;
 import com.fedorkzsoft.wheely_tst.base.WheelyJson;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 
 import android.app.Activity;
 import android.app.Notification;
-//import android.app.NotificationManager;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
@@ -45,16 +46,20 @@ public class WheelyService extends Service {
 	public static final String ACTION_LOGIN = "action.login";
 	
 
-	public static final int NOTIFICATION_ONLINE = 1;
-	public static final int NOTIFICATION_OFFLINE = 2;
-	public static final int NOTIFICATION_CONNECTION_STARTED = 3;
+	public static final int NOTIFICATION_ONLINE = 0;
+	public static final int NOTIFICATION_OFFLINE = 1;
+	public static final int NOTIFICATION_CONNECTION_STARTED = 2;
 	
+    private static final long UPDATE_PERIOD = 1000L;
+
 	private static final int NOTIFICATION_ID = 1;
 	public static final int MSG_REGISTER_CLIENT = 2;
 	public static final int MSG_UNREGISTER_CLIENT = 3;
+	private static final String MSG_LOCATION = "msg_loc";
+	private static final int MSG_LOCATION_CHANGE = 5;
     
-//    private NotificationManager mNotifMan;
-    private static boolean mIsConnected = false;
+    private NotificationManager nm;
+    private static boolean isConnected = false;
     
 	private WheelyGps mGpsInfo;
 	protected LatLng mCurLoc;
@@ -62,12 +67,12 @@ public class WheelyService extends Service {
 	final Messenger mMessenger = new Messenger(new IncomingHandler()); // Target we publish for clients to send messages to IncomingHandler.
     ArrayList<Messenger> mClients = new ArrayList<Messenger>(); // Keeps track of all current registered clients.
 	
+	private LatLngBounds mBounds;
 	private int mLatestNotification = -1;
 	
 	WheelyPreferences mPrefs;
 	
 	WheelyWebSocket mWheelyWebSocket;
-	private boolean mIsForeground = false;
 
 	@Override
 	public IBinder onBind(Intent intent) {
@@ -77,18 +82,16 @@ public class WheelyService extends Service {
 
    @Override
     public void onDestroy() {
-       if (mIsForeground){
-    	   stopForeground(true);
-       }
-       mIsConnected = false;
-       Log.i("svr", "SERVICE    STOP.");
-
-	   super.onDestroy();
+        super.onDestroy();
+        
+        nm.cancel(0); // Cancel the persistent notification.
+        Log.i("svr", "SERVICE    STOP.");
+        isConnected = false;
     }
 	   
     public static boolean isRunning()
     {
-        return mIsConnected;
+        return isConnected;
     }	   
     
 	private void setupGPS() {
@@ -159,10 +162,9 @@ public class WheelyService extends Service {
     }
 
 	private void sendLocationToWheely(LatLng loc) {
-		if (mWheelyWebSocket != null)
-			mWheelyWebSocket.sendTextMessage(
-					WheelyJson.SerializeLocation(loc)
-				);
+		mWheelyWebSocket.sendTextMessage(
+				WheelyJson.SerializeLocation(loc)
+			);
     }
 
 	private void sendGpsEnabled() {
@@ -204,10 +206,10 @@ public class WheelyService extends Service {
 	public int onStartCommand(Intent intent, int flags, int startId) {
 		
 		String act = intent.getAction();
-		if (ACTION_CHECK_ALIVE.equalsIgnoreCase(act) && mIsConnected){
+		if (ACTION_CHECK_ALIVE.equalsIgnoreCase(act) && isConnected){
 			sendIsAlive();
 		} else if (ACTION_LOGIN.equalsIgnoreCase(act)){
-				if (!mIsConnected){
+				if (!isConnected){
 		        showNotification(NOTIFICATION_CONNECTION_STARTED);
 		        setupWebSockets(mPrefs.getLogin(), mPrefs.getPass());
 			} else {
@@ -220,8 +222,6 @@ public class WheelyService extends Service {
 	@Override
     public void onCreate() {
         super.onCreate();
-
-//        mNotifMan = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
 
         mPrefs = new WheelyPreferences(this);
         setupGPS();
@@ -242,7 +242,7 @@ public class WheelyService extends Service {
 			
 			@Override
 			public void onOpen() {
-				mIsConnected = true;				
+				isConnected = true;				
 				showNotification(NOTIFICATION_ONLINE);
 				sendAuthResult(0);
 				if (mCurLoc != null)
@@ -251,18 +251,19 @@ public class WheelyService extends Service {
 			
 			@Override
 			public void onClose(int code, String reason) {
-				mIsConnected = false;				
+				isConnected = false;				
 				
 				showNotification(NOTIFICATION_OFFLINE);
 				if (code == NOT_AUTH_SVR){
 					sendAuthResult(NOT_AUTH);
-				}else{//GOOD IDEA = reconnect only after some time
+				}else{
 					mWheelyWebSocket.reconnectToWheely();
 				}
 			}
 			
 			@Override
 			public void onBinaryMessage(byte[] payload) {
+				// TODO Auto-generated method stub
 			}
 		});
 	}
@@ -292,23 +293,32 @@ public class WheelyService extends Service {
 			return;
 		}
 
-		int icon = R.drawable.ic_launcher;
+		nm = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+
+		int icon = 0;
         String message = "";
         
         switch (type) {
         
         case NOTIFICATION_ONLINE:
+        	
+//        	icon = R.drawable.ic_status_online;
         	message = getString(R.string.status_online);
         	break;
         	
         case NOTIFICATION_OFFLINE:
+        	
+//        	icon = R.drawable.ic_status_offline;
         	message = getString(R.string.status_offline);
         	break;
         	
         case NOTIFICATION_CONNECTION_STARTED:
+        	
+//        	icon = R.drawable.ic_status_offline;
         	message = getString(R.string.status_connecting);
         	break;
         }
+      
         
         String title = getString(R.string.app_name);
         Intent notificationIntent = new Intent(this, WheelyMapActivity.class);
@@ -324,12 +334,13 @@ public class WheelyService extends Service {
 //	        .setContentTitle(message)
 //	        .setContentText(message)
 //	        .build();
-//         
-// Use this due to A2.3+ support 
+        
+// to support A2.2        
 		Notification notification = new  Notification(
         		icon, 
         		message, 
         		System.currentTimeMillis());
+        
         
         
         notification.setLatestEventInfo(this, title, message, pi);
@@ -341,8 +352,8 @@ public class WheelyService extends Service {
         notification.flags |=Notification.FLAG_ONGOING_EVENT;
         
         
+//        nm.notify(NOTIFICATION_ID, notification);
         startForeground(NOTIFICATION_ID, notification);
-        mIsForeground  = true;
         mLatestNotification = type;
     }
     

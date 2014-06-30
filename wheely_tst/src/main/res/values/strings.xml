@@ -18,7 +18,6 @@
 	<string name="err_invalid_login">Login and password shouldn\'t be empty.</string>
 	<string name="err_not_auth">Wrong login or password. Please check.</string>
 	<string name="err_network">Wrong login or password. Please check.</string>
-	<string name="err_nomapv2">Please check Google maps v2 installation and restart app.</string>
-				
+			
    
 </resources>

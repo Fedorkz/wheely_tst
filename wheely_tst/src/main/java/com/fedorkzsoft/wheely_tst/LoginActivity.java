@@ -57,9 +57,7 @@ public class LoginActivity extends ActionBarActivity {
     
     @Override
     protected void onDestroy() {
-    	if (mBroadcastReciever != null)
-    		unregisterReceiver(mBroadcastReciever);
-    	
+    	unregisterReceiver(mBroadcastReciever);
     	super.onDestroy();
     }
 
@@ -75,10 +73,10 @@ public class LoginActivity extends ActionBarActivity {
 					finish();
 					openMapVindow();
 				} else if (res == WheelyService.NOT_AUTH){
-					showError(R.string.err_not_auth);
+					showAlert(R.string.err_not_auth);
 					stopWeelyService();
 				} else {
-					showError(R.string.err_network);
+					showAlert(R.string.err_network);
 					stopWeelyService();
 				}
 			}
@@ -105,7 +103,7 @@ public class LoginActivity extends ActionBarActivity {
 //    		stopWeelyService();
         	startWeelyService();
     	} else {
-    		showError(R.string.err_invalid_login);
+    		showAlert(R.string.err_invalid_login);
     	}
 	}
 
@@ -130,7 +128,7 @@ public class LoginActivity extends ActionBarActivity {
 	}
 
 
-	private void showError(int msg) {
+	private void showAlert(int msg) {
 		new AlertDialog.Builder(this)
 		 	.setTitle(R.string.err)
 			.setMessage(msg)

@@ -61,3 +61,13 @@ $RECYCLE.BIN/
 *.msi
 *.msm
 *.msp
+
+
+/*/out
+/*/build
+/*/*/build
+/*/*/production
+*.iws
+*.ipr
+*~
+*.swp
