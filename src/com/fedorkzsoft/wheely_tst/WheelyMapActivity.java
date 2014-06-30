@@ -151,7 +151,6 @@ public class WheelyMapActivity extends FragmentActivity {
         } else {
         	return false;
         }
-        	
     }
 	
 	private AlertDialog showError(int msg) {
@@ -165,7 +164,6 @@ public class WheelyMapActivity extends FragmentActivity {
 		ad.show();
 		return ad;
 	}
-
 
 	private void initBroadcast() {
 		mBroadcastReciever = new BroadcastReceiver(){
@@ -183,6 +181,4 @@ public class WheelyMapActivity extends FragmentActivity {
 		IntentFilter intFilt = new IntentFilter(WheelyService.BROADCAST_ACTION_POINTS);
         registerReceiver(mBroadcastReciever, intFilt);        
 	}
-
-   
 }
