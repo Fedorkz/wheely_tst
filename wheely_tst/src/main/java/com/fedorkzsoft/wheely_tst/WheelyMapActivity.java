@@ -4,8 +4,10 @@ package com.fedorkzsoft.wheely_tst;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncTask;
@@ -44,13 +46,25 @@ public class WheelyMapActivity extends FragmentActivity {
 		
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_map);
-		setupMap();
-		initBroadcast();
+		if ( setupMap() ){
+			initBroadcast();
+		} else {
+        	AlertDialog ad = showError(R.string.err_nomapv2);
+        	ad.setOnDismissListener(new DialogInterface.OnDismissListener() {
+				
+				@Override
+				public void onDismiss(DialogInterface dialog) {
+					finish();
+				}
+			});
+		}
 	}
 	
 	@Override
 	protected void onDestroy() {
-		unregisterReceiver(mBroadcastReciever);
+		if (mBroadcastReciever != null)
+			unregisterReceiver(mBroadcastReciever);
+
 		super.onDestroy();
 	}
 
@@ -90,12 +104,16 @@ public class WheelyMapActivity extends FragmentActivity {
 				updateMarker(pair.first, pair.second);
 			} else {
 				Marker m = createMarker(car);
-				mPersonMarkers.put(car.id, new Pair<Car, Marker>(car, m));
+				if (m != null)
+					mPersonMarkers.put(car.id, new Pair<Car, Marker>(car, m));
 			}
 		}
 	}
 
 	private Marker createMarker(Car p) {
+		if (mMap == null)
+			return null;
+		
 		return mMap.addMarker(new MarkerOptions()
 			.title(""+p.id)
 	//		.icon(new BitmapDescriptor())
@@ -122,13 +140,30 @@ public class WheelyMapActivity extends FragmentActivity {
 	
 	///////////////////////////////////////////////////////////////////
 
-	private void setupMap() {
+	private boolean setupMap() {
         mMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
-    	mMap.getUiSettings().setCompassEnabled(true);
-    	mMap.getUiSettings().setMyLocationButtonEnabled(true);
-    	mMap.setMyLocationEnabled(true);
-    	mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+        if (mMap != null){
+	    	mMap.getUiSettings().setCompassEnabled(true);
+	    	mMap.getUiSettings().setMyLocationButtonEnabled(true);
+	    	mMap.setMyLocationEnabled(true);
+	    	mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+	    	return true;
+        } else {
+        	return false;
+        }
     }
+	
+	private AlertDialog showError(int msg) {
+		AlertDialog ad = 
+		new AlertDialog.Builder(this)
+		 	.setTitle(R.string.err)
+			.setMessage(msg)
+			.setPositiveButton(R.string.ok, null)
+			.create();
+		
+		ad.show();
+		return ad;
+	}
 
 	private void initBroadcast() {
 		mBroadcastReciever = new BroadcastReceiver(){
@@ -146,6 +181,4 @@ public class WheelyMapActivity extends FragmentActivity {
 		IntentFilter intFilt = new IntentFilter(WheelyService.BROADCAST_ACTION_POINTS);
         registerReceiver(mBroadcastReciever, intFilt);        
 	}
-
-   
 }
