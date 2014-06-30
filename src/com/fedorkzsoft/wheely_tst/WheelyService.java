@@ -58,7 +58,7 @@ public class WheelyService extends Service {
 	private static final String MSG_LOCATION = "msg_loc";
 	private static final int MSG_LOCATION_CHANGE = 5;
     
-    private NotificationManager nm;
+    private NotificationManager mNotifMan;
     private static boolean isConnected = false;
     
 	private WheelyGps mGpsInfo;
@@ -84,7 +84,7 @@ public class WheelyService extends Service {
     public void onDestroy() {
         super.onDestroy();
         
-        nm.cancel(0); // Cancel the persistent notification.
+        mNotifMan.cancel(0); // Cancel the persistent notification.
         Log.i("svr", "SERVICE    STOP.");
         isConnected = false;
     }
@@ -223,6 +223,8 @@ public class WheelyService extends Service {
     public void onCreate() {
         super.onCreate();
 
+        mNotifMan = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+
         mPrefs = new WheelyPreferences(this);
         setupGPS();
     }
@@ -293,8 +295,6 @@ public class WheelyService extends Service {
 			return;
 		}
 
-		nm = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
-
 		int icon = 0;
         String message = "";
         
@@ -318,7 +318,17 @@ public class WheelyService extends Service {
         	message = getString(R.string.status_connecting);
         	break;
         }
+      
         
+        String title = getString(R.string.app_name);
+        Intent notificationIntent = new Intent(this, WheelyMapActivity.class);
+        
+        notificationIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | 
+        	    Intent.FLAG_ACTIVITY_SINGLE_TOP | 
+        	    Intent.FLAG_ACTIVITY_NEW_TASK);
+        
+        PendingIntent pi = PendingIntent.getActivity(this, 1,
+        		notificationIntent, 0);        
         
 //        Notification notification = new Notification.Builder(this)
 //	        .setContentTitle(message)
@@ -331,20 +341,20 @@ public class WheelyService extends Service {
         		message, 
         		System.currentTimeMillis());
         
-        String title = getString(R.string.app_name);
-        Intent notificationIntent = new Intent(this, WheelyMapActivity.class);
         
-//        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-//        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT);
         
-        PendingIntent intent = PendingIntent.getActivity(this, 1, notificationIntent, 0);
-        notification.setLatestEventInfo(this, title, message, intent);
+        notification.setLatestEventInfo(this, title, message, pi);
         
 //        notification.flags = Notification.FLAG_ONGOING_EVENT;
         notification.defaults |= Notification.DEFAULT_SOUND;
+        notification.flags |=Notification.FLAG_NO_CLEAR;
+        notification.flags |=Notification.FLAG_FOREGROUND_SERVICE;
+        notification.flags |=Notification.FLAG_ONGOING_EVENT;
+        
         
 //        nm.notify(NOTIFICATION_ID, notification);
         startForeground(NOTIFICATION_ID, notification);
+//        mNotifMan.notify(NOTIFICATION_ID, notification);
         mLatestNotification = type;
     }
     
